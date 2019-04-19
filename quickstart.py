@@ -4,6 +4,7 @@ import base64
 import datetime
 import os.path
 import pickle
+import time
 from email.mime.text import MIMEText
 
 import requests
@@ -16,6 +17,12 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.send", "https://www.googleapis.
           "https://www.googleapis.com/auth/gmail.compose", "https://www.googleapis.com/auth/gmail.settings.sharing"]
 
 service = None
+has_sent_mail = False
+check_interval = 30
+movie_id = "NCG997491"
+date = "2019-05-04"
+movie_name = "Avengers: Endgame"
+cinema_api_url = "https://www.filmstaden.se/api/v2/show/stripped/sv/1/1024?filter.countryAlias=se&filter.cityAlias=GB"
 
 
 def main():
@@ -67,14 +74,10 @@ def send_message(user_id, message):
 
 
 def check_for_tickets():
-    movieId = "NCG997491"
-    date = "2019-05-04"
-    movie_name = "Avengers: Endgame"
-    cinemaApiUrl = "https://www.filmstaden.se/api/v2/show/stripped/sv/1/1024?filter.countryAlias=se&filter.cityAlias=GB"
-    content = requests.get(url=cinemaApiUrl)
+    content = requests.get(url=cinema_api_url)
     correct_shows = []
     for show in content.json()["items"]:
-        if show["mId"] == movieId and date in show["utc"]:
+        if show["mId"] == movie_id and date in show["utc"]:
             correct_shows.append(show)
 
     shows_info = ""
@@ -91,6 +94,9 @@ def check_for_tickets():
         send_message("me", create_message("noreply@vidarmagnusson.com", "vidar.halmstad@hotmail.com", mail_subject,
                                           mail_text))
 
+        return True
+    return False
+
 
 # TODO: Make this dynamic.
 def get_correct_time(datetime):
@@ -100,4 +106,9 @@ def get_correct_time(datetime):
 if __name__ == "__main__":
     main()
 
-check_for_tickets()
+
+while not has_sent_mail:
+    has_sent_mail = check_for_tickets()
+    print(str(datetime.datetime.now()) + " checked for tickets, sent email? " + str(has_sent_mail))
+    if not has_sent_mail:
+        time.sleep(check_interval)
