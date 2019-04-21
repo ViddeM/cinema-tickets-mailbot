@@ -1,0 +1,8 @@
+googleapiclient
+google
+requests
+psycopg2
+flask
+flask-restful
+pony
+flask-cors

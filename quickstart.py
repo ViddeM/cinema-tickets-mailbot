@@ -20,9 +20,10 @@ service = None
 has_sent_mail = False
 check_interval = 30
 movie_id = "NCG997491"
-date = "2019-05-04"
+date = "2019-05-05"
 movie_name = "Avengers: Endgame"
 cinema_api_url = "https://www.filmstaden.se/api/v2/show/stripped/sv/1/1024?filter.countryAlias=se&filter.cityAlias=GB"
+reciever_mail = "vidar.halmstad@hotmail.com"
 
 
 def main():
@@ -73,7 +74,7 @@ def send_message(user_id, message):
         print("An error occured: %s" % error)
 
 
-def check_for_tickets():
+def check_for_tickets(movie_id, date, movie_name, cinema_api_url, reciever_url):
     content = requests.get(url=cinema_api_url)
     correct_shows = []
     for show in content.json()["items"]:
@@ -91,7 +92,7 @@ def check_for_tickets():
                 " at the following times/locations: \n " + shows_info
 
     if len(correct_shows) > 0:
-        send_message("me", create_message("noreply@vidarmagnusson.com", "vidar.halmstad@hotmail.com", mail_subject,
+        send_message("me", create_message("noreply@vidarmagnusson.com", reciever_url, mail_subject,
                                           mail_text))
 
         return True
