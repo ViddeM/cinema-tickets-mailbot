@@ -1,4 +1,5 @@
-googleapiclient
+pytz
+tzlocal
 google
 requests
 psycopg2

@@ -12,18 +12,12 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from pony.orm import db_session
+
+from db import Cinema, Movie, Show, CinemaCity, CinemaRoom
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.send", "https://www.googleapis.com/auth/gmail.modify",
           "https://www.googleapis.com/auth/gmail.compose", "https://www.googleapis.com/auth/gmail.settings.sharing"]
-
-service = None
-has_sent_mail = False
-check_interval = 30
-movie_id = "NCG997491"
-date = "2019-05-05"
-movie_name = "Avengers: Endgame"
-cinema_api_url = "https://www.filmstaden.se/api/v2/show/stripped/sv/1/1024?filter.countryAlias=se&filter.cityAlias=GB"
-reciever_mail = "vidar.halmstad@hotmail.com"
 
 
 def main():
@@ -43,7 +37,6 @@ def main():
         with open("token.pickle", "wb") as token:
             pickle.dump(creds, token)
 
-    global service
     service = build("gmail", "v1", credentials=creds)
 
     results = service.users().labels().list(userId="me").execute()
@@ -56,6 +49,8 @@ def main():
         for label in labels:
             print(label["name"])
 
+    return service
+
 
 def create_message(sender, to, subject, message_text):
     message = MIMEText(message_text)
@@ -65,7 +60,7 @@ def create_message(sender, to, subject, message_text):
     return {'raw': base64.urlsafe_b64encode(message.as_string().encode()).decode()}
 
 
-def send_message(user_id, message):
+def send_message(user_id, message, service):
     try:
         message = service.users().messages().send(userId=user_id, body=message).execute()
         print("Message Id: %s" % message["id"])
@@ -74,25 +69,25 @@ def send_message(user_id, message):
         print("An error occured: %s" % error)
 
 
-def check_for_tickets(movie_id, date, movie_name, cinema_api_url, reciever_url):
-    content = requests.get(url=cinema_api_url)
-    correct_shows = []
-    for show in content.json()["items"]:
-        if show["mId"] == movie_id and date in show["utc"]:
-            correct_shows.append(show)
+@db_session
+def get_shows(movie_id, city_alias, cinema_name, date):
+    movie = Movie.get(id=movie_id)
+    city = CinemaCity.get(alias=city_alias)
+    cinema = Cinema.get(name=cinema_name, city=city)
+    return Show.select(lambda show:
+                show.movie == movie and
+                show.date.date() == date.date() and
+                show.room in CinemaRoom.select(lambda room: room.cinema == cinema))[:10]
 
-    shows_info = ""
-    for show in correct_shows:
-        time = get_correct_time(datetime.datetime.strptime(show["utc"], "%Y-%m-%dT%H:%M:%SZ"))
-        text = time + " in " + show["ct"] + ", " + show["st"]
-        shows_info = shows_info + text + "\n"
-
+'''
+@db_session
+def check_for_tickets(movie_id, city_alias, cinema_name, date, reciever_email, service):
     mail_subject = "The cinema tickets you've been waiting for " + movie_name + " are now are now available"
-    mail_text = "Hi there! \n\nThere are now cinema tickets available for Avengers: Endgame on " + date +\
+    mail_text = "Hi there! \n\nThere are now cinema tickets available for Avengers: Endgame on " + date + \
                 " at the following times/locations: \n " + shows_info
 
     if len(correct_shows) > 0:
-        send_message("me", create_message("noreply@vidarmagnusson.com", reciever_url, mail_subject,
+        send_message("me", create_message("noreply@vidarmagnusson.com", reciever_email, mail_subject,
                                           mail_text))
 
         return True
@@ -104,12 +99,4 @@ def get_correct_time(datetime):
     return "{}:{}".format(datetime.hour + 2, str(datetime.minute).zfill(2))
 
 
-if __name__ == "__main__":
-    main()
-
-
-while not has_sent_mail:
-    has_sent_mail = check_for_tickets()
-    print(str(datetime.datetime.now()) + " checked for tickets, sent email? " + str(has_sent_mail))
-    if not has_sent_mail:
-        time.sleep(check_interval)
+'''

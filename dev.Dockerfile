@@ -4,7 +4,7 @@ RUN mkdir /usr/src/app
 
 WORKDIR /usr/src/app
 
-COPY requirements.txt
+COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -14,7 +14,7 @@ ENV CINEMA_POSTGRES_USER cinema
 ENV CINEMA_POSTGRES_PASSWORD password
 ENV CINEMA_POSTGRES_HOST db
 ENV CINEMA_POSTGRES_PORT 5432
-ENV CINEMA_POSTGRES_DB postgres
+ENV CINEMA_POSTGRES_DB cinema
 
 EXPOSE 5000
 
